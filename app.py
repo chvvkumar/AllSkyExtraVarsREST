@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import HTMLResponse
 
 JSON_DIR = Path(os.environ.get("ALLSKY_JSON_DIR", "/home/pi/allsky/config/overlay/extra"))
 
@@ -54,8 +55,7 @@ def custom_swagger_ui():
     )
     body = resp.body.decode()
     body = body.replace("</head>", f"<style>{DARK_CSS}</style></head>")
-    resp.body = body.encode()
-    return resp
+    return HTMLResponse(body)
 
 
 app.add_middleware(
