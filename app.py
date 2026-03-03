@@ -7,7 +7,59 @@ from fastapi.middleware.cors import CORSMiddleware
 
 JSON_DIR = Path(os.environ.get("ALLSKY_JSON_DIR", "/home/pi/allsky/config/overlay/extra"))
 
-app = FastAPI(title="AllSky Data API", version="1.0.0")
+app = FastAPI(
+    title="AllSky Data API",
+    version="1.0.0",
+    swagger_ui_parameters={"syntaxHighlight.theme": "monokai"},
+)
+
+
+
+def _patch_swagger_dark_mode():
+    from fastapi.openapi.docs import get_swagger_ui_html as _orig
+
+    def dark_swagger_ui_html(*args, **kwargs):
+        resp = _orig(*args, **kwargs)
+        dark_css = (
+            '<style>'
+            'body{background:#1a1a2e;color:#e0e0e0}'
+            '.swagger-ui{background:#1a1a2e}'
+            '.swagger-ui .topbar{background:#16213e}'
+            '.swagger-ui .info .title,.swagger-ui .info li,.swagger-ui .info p,.swagger-ui .info table,'
+            '.swagger-ui .info a{color:#e0e0e0}'
+            '.swagger-ui .scheme-container{background:#16213e;box-shadow:none}'
+            '.swagger-ui .opblock-tag{color:#e0e0e0;border-bottom-color:#2a2a4a}'
+            '.swagger-ui .opblock .opblock-summary-description{color:#b0b0b0}'
+            '.swagger-ui .opblock .opblock-section-header{background:#16213e}'
+            '.swagger-ui .opblock .opblock-section-header h4{color:#e0e0e0}'
+            '.swagger-ui table thead tr td,.swagger-ui table thead tr th{color:#e0e0e0;border-bottom-color:#2a2a4a}'
+            '.swagger-ui .parameter__name,.swagger-ui .parameter__type{color:#e0e0e0}'
+            '.swagger-ui .response-col_status{color:#e0e0e0}'
+            '.swagger-ui .response-col_description{color:#b0b0b0}'
+            '.swagger-ui .model-title{color:#e0e0e0}'
+            '.swagger-ui .model{color:#e0e0e0}'
+            '.swagger-ui section.models{border-color:#2a2a4a}'
+            '.swagger-ui section.models h4{color:#e0e0e0}'
+            '.swagger-ui .model-box{background:#16213e}'
+            '.swagger-ui .prop-type{color:#7ec8e3}'
+            '.swagger-ui select{background:#16213e;color:#e0e0e0;border-color:#2a2a4a}'
+            '.swagger-ui input[type=text]{background:#16213e;color:#e0e0e0;border-color:#2a2a4a}'
+            '.swagger-ui textarea{background:#16213e;color:#e0e0e0;border-color:#2a2a4a}'
+            '.swagger-ui .btn{border-color:#2a2a4a;color:#e0e0e0}'
+            '.swagger-ui .copy-to-clipboard{filter:invert(1)}'
+            '.swagger-ui .microlight{background:#0f3460!important;color:#e0e0e0!important}'
+            '</style>'
+        )
+        body = resp.body.decode()
+        body = body.replace('</head>', dark_css + '</head>')
+        resp.body = body.encode()
+        return resp
+
+    import fastapi.applications
+    fastapi.applications.get_swagger_ui_html = dark_swagger_ui_html
+
+
+_patch_swagger_dark_mode()
 
 app.add_middleware(
     CORSMiddleware,
