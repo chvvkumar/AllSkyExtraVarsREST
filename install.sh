@@ -3,6 +3,9 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+echo "==> Pulling latest changes..."
+git -C "$SCRIPT_DIR" pull
+
 echo "==> Creating Python virtual environment..."
 python3 -m venv "$SCRIPT_DIR/venv"
 
