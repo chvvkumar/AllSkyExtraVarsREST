@@ -11,7 +11,10 @@ echo "==> Installing dependencies..."
 "$SCRIPT_DIR/venv/bin/pip" install -r "$SCRIPT_DIR/requirements.txt"
 
 echo "==> Installing systemd service..."
-sudo cp "$SCRIPT_DIR/allsky-api.service" /etc/systemd/system/
+CURRENT_USER="$(whoami)"
+sed -e "s|/home/pi/scripts/allskyAPI|${SCRIPT_DIR}|g" \
+    -e "s|User=pi|User=${CURRENT_USER}|g" \
+    "$SCRIPT_DIR/allsky-api.service" | sudo tee /etc/systemd/system/allsky-api.service > /dev/null
 sudo systemctl daemon-reload
 sudo systemctl enable allsky-api.service
 sudo systemctl restart allsky-api.service
