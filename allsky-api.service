@@ -1,0 +1,15 @@
+[Unit]
+Description=AllSky Data REST API
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/scripts/allskyAPI
+ExecStart=/home/pi/scripts/allskyAPI/venv/bin/uvicorn app:app --host 0.0.0.0 --port 8080
+Restart=on-failure
+RestartSec=5
+Environment=ALLSKY_JSON_DIR=/home/pi/allsky/config/overlay/extra
+
+[Install]
+WantedBy=multi-user.target
