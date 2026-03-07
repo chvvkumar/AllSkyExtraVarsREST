@@ -10,7 +10,7 @@ A lightweight REST API that serves AllSky overlay extra variable JSON files over
 | `GET /files` | List all available data file names |
 | `GET /all` | All data files combined into one response |
 | `GET /data/{name}` | Get a single data file by name |
-| `GET /docs` | Swagger UI documentation (dark mode) |
+| `GET /docs` | Swagger UI documentation |
 
 ## Installation
 
