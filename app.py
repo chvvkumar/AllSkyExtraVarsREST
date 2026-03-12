@@ -1,5 +1,7 @@
 import json
 import os
+import shlex
+import subprocess
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -8,6 +10,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import HTMLResponse
 
 JSON_DIR = Path(os.environ.get("ALLSKY_JSON_DIR", "/home/pi/allsky/config/overlay/extra"))
+ALLSKY_HOME = Path(os.environ.get("ALLSKY_HOME", "/home/pi/allsky"))
 
 DARK_CSS = (
     'body{background:#1a1a2e;color:#e0e0e0}'
@@ -75,13 +78,39 @@ def list_json_files() -> list[str]:
     return sorted(p.stem for p in JSON_DIR.glob("*.json"))
 
 
+def get_allsky_env() -> dict:
+    """Sources the Allsky variables.sh script and captures AS_ variables."""
+    env_vars = {}
+    variables_sh = ALLSKY_HOME / "variables.sh"
+
+    if variables_sh.is_file():
+        command = shlex.split(f"bash -c 'source {variables_sh} && env'")
+        try:
+            proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            for line in proc.stdout:
+                line = line.decode(encoding='UTF-8').strip('\n').strip('\r')
+                if "=" in line:
+                    key, _, value = line.partition("=")
+                    # Grab AS_ and ALLSKY_ prefixed variables
+                    if key.startswith("AS_") or key.startswith("ALLSKY_"):
+                        env_vars[key] = value
+            proc.communicate()
+        except Exception as e:
+            env_vars["error"] = f"Failed to load variables.sh: {str(e)}"
+    else:
+        env_vars["error"] = f"Variables file not found at {variables_sh}"
+
+    return env_vars
+
+
 @app.get("/")
 def index():
     files = list_json_files()
     return {
         "endpoints": {
             "/": "This index",
-            "/all": "All data combined",
+            "/env": "AllSky core environment variables (AS_*)",
+            "/all": "All JSON data combined",
             "/data/{name}": "Single data file",
         },
         "available": {name: f"/data/{name}" for name in files},
@@ -93,6 +122,12 @@ def files():
     return list_json_files()
 
 
+@app.get("/env")
+def env_data():
+    """Returns the core AllSky AS_ environment variables."""
+    return get_allsky_env()
+
+
 @app.get("/all")
 def all_data():
     result = {}
@@ -101,6 +136,9 @@ def all_data():
             result[path.stem] = read_json_file(path)
         except (json.JSONDecodeError, OSError):
             result[path.stem] = {"error": "failed to read"}
+
+    # Include the environment variables inside the "all" payload as well
+    result["env"] = get_allsky_env()
     return result
 
 
