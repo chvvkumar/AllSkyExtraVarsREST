@@ -1,7 +1,6 @@
 import json
 import os
-import shlex
-import subprocess
+import re
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -79,30 +78,23 @@ def list_json_files() -> list[str]:
 
 
 def get_allsky_env() -> dict:
-    """Sources the Allsky variables.sh script and captures ALLSKY_ variables."""
+    """Parses AS_ variables from the Allsky overlay debug file."""
     env_vars = {}
-    variables_sh = ALLSKY_HOME / "variables.sh"
+    debug_file = ALLSKY_HOME / "tmp" / "overlaydebug.txt"
 
-    if variables_sh.is_file():
-        # ALLSKY_HOME must be exported before sourcing variables.sh
-        cmd = f"export ALLSKY_HOME={shlex.quote(str(ALLSKY_HOME))} && source {shlex.quote(str(variables_sh))} && env"
+    if debug_file.is_file():
         try:
-            proc = subprocess.Popen(
-                ["bash", "-c", cmd],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            for line in proc.stdout:
-                line = line.decode(encoding='UTF-8').strip('\n').strip('\r')
-                if "=" in line:
-                    key, _, value = line.partition("=")
-                    if key.startswith("ALLSKY_"):
+            with open(debug_file) as f:
+                for line in f:
+                    match = re.match(r"^(AS_\S+)\s+(.*)", line)
+                    if match:
+                        key = match.group(1)
+                        value = match.group(2).strip()
                         env_vars[key] = value
-            proc.communicate()
-        except Exception as e:
-            env_vars["error"] = f"Failed to load variables.sh: {str(e)}"
+        except OSError as e:
+            env_vars["error"] = f"Failed to read overlaydebug.txt: {str(e)}"
     else:
-        env_vars["error"] = f"Variables file not found at {variables_sh}"
+        env_vars["error"] = f"File not found: {debug_file}"
 
     return env_vars
 
@@ -113,7 +105,7 @@ def index():
     return {
         "endpoints": {
             "/": "This index",
-            "/env": "AllSky core environment variables (AS_*)",
+            "/env": "AllSky runtime variables (star count, exposure, planets, weather, etc.)",
             "/all": "All JSON data combined",
             "/data/{name}": "Single data file",
         },
@@ -128,7 +120,7 @@ def files():
 
 @app.get("/env")
 def env_data():
-    """Returns the core AllSky AS_ environment variables."""
+    """Returns AllSky runtime AS_ variables (star count, exposure, planets, weather, etc.)."""
     return get_allsky_env()
 
 
