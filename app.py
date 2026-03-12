@@ -79,20 +79,24 @@ def list_json_files() -> list[str]:
 
 
 def get_allsky_env() -> dict:
-    """Sources the Allsky variables.sh script and captures AS_ variables."""
+    """Sources the Allsky variables.sh script and captures ALLSKY_ variables."""
     env_vars = {}
     variables_sh = ALLSKY_HOME / "variables.sh"
 
     if variables_sh.is_file():
-        command = shlex.split(f"bash -c 'source {variables_sh} && env'")
+        # ALLSKY_HOME must be exported before sourcing variables.sh
+        cmd = f"export ALLSKY_HOME={shlex.quote(str(ALLSKY_HOME))} && source {shlex.quote(str(variables_sh))} && env"
         try:
-            proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            proc = subprocess.Popen(
+                ["bash", "-c", cmd],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
             for line in proc.stdout:
                 line = line.decode(encoding='UTF-8').strip('\n').strip('\r')
                 if "=" in line:
                     key, _, value = line.partition("=")
-                    # Grab AS_ and ALLSKY_ prefixed variables
-                    if key.startswith("AS_") or key.startswith("ALLSKY_"):
+                    if key.startswith("ALLSKY_"):
                         env_vars[key] = value
             proc.communicate()
         except Exception as e:
