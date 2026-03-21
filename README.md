@@ -7,8 +7,9 @@ A lightweight REST API that serves AllSky overlay extra variable JSON files over
 | Endpoint | Description |
 |---|---|
 | `GET /` | Index with available endpoints and data files |
+| `GET /env` | AllSky runtime `AS_*` variables (star count, exposure, planets, weather, etc.) |
 | `GET /files` | List all available data file names |
-| `GET /all` | All data files combined into one response |
+| `GET /all` | All data files combined into one response (includes `env` data) |
 | `GET /data/{name}` | Get a single data file by name |
 | `GET /docs` | Swagger UI documentation |
 
@@ -28,11 +29,23 @@ The install script will:
 - Install dependencies (`fastapi`, `uvicorn`)
 - Install and start a systemd service on port 8080
 
+## Service Management
+
+```bash
+sudo systemctl status allsky-api     # Check status
+sudo systemctl stop allsky-api       # Stop service
+sudo systemctl start allsky-api      # Start service
+sudo systemctl restart allsky-api    # Restart service
+sudo journalctl -u allsky-api -f     # Follow logs
+```
+
 ## Configuration
 
 The API reads JSON files from the directory set by the `ALLSKY_JSON_DIR` environment variable. Defaults to `/home/pi/allsky/config/overlay/extra`.
 
-This can be changed in the systemd service file at `/etc/systemd/system/allsky-api.service`.
+The `/env` endpoint reads `AS_*` variables from `$ALLSKY_HOME/tmp/overlaydebug.txt`, which Allsky updates after each overlay render. This includes camera settings, star count, planet positions, moon phase, temperatures, weather data, and more.
+
+Both paths can be changed in the systemd service file at `/etc/systemd/system/allsky-api.service`.
 
 ## Manual Usage
 
