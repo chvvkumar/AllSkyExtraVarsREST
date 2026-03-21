@@ -22,6 +22,17 @@ sudo systemctl daemon-reload
 sudo systemctl enable allsky-api.service
 sudo systemctl restart allsky-api.service
 
+echo "==> Checking service status..."
+sudo systemctl status allsky-api.service --no-pager
+
+echo ""
 echo "==> Done! API is running on port 8080"
 echo "    Try: curl http://localhost:8080/"
 echo "    Docs: http://localhost:8080/docs"
+echo ""
+echo "    Useful commands:"
+echo "      sudo systemctl status allsky-api    # Check status"
+echo "      sudo systemctl stop allsky-api      # Stop service"
+echo "      sudo systemctl start allsky-api     # Start service"
+echo "      sudo systemctl restart allsky-api   # Restart service"
+echo "      sudo journalctl -u allsky-api -f    # Follow logs"

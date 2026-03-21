@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -8,6 +9,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import HTMLResponse
 
 JSON_DIR = Path(os.environ.get("ALLSKY_JSON_DIR", "/home/pi/allsky/config/overlay/extra"))
+ALLSKY_HOME = Path(os.environ.get("ALLSKY_HOME", "/home/pi/allsky"))
 
 DARK_CSS = (
     'body{background:#1a1a2e;color:#e0e0e0}'
@@ -75,13 +77,36 @@ def list_json_files() -> list[str]:
     return sorted(p.stem for p in JSON_DIR.glob("*.json"))
 
 
+def get_allsky_env() -> dict:
+    """Parses AS_ variables from the Allsky overlay debug file."""
+    env_vars = {}
+    debug_file = ALLSKY_HOME / "tmp" / "overlaydebug.txt"
+
+    if debug_file.is_file():
+        try:
+            with open(debug_file) as f:
+                for line in f:
+                    match = re.match(r"^(AS_\S+)\s+(.*)", line)
+                    if match:
+                        key = match.group(1)
+                        value = match.group(2).strip()
+                        env_vars[key] = value
+        except OSError as e:
+            env_vars["error"] = f"Failed to read overlaydebug.txt: {str(e)}"
+    else:
+        env_vars["error"] = f"File not found: {debug_file}"
+
+    return env_vars
+
+
 @app.get("/")
 def index():
     files = list_json_files()
     return {
         "endpoints": {
             "/": "This index",
-            "/all": "All data combined",
+            "/env": "AllSky runtime variables (star count, exposure, planets, weather, etc.)",
+            "/all": "All JSON data combined",
             "/data/{name}": "Single data file",
         },
         "available": {name: f"/data/{name}" for name in files},
@@ -93,6 +118,12 @@ def files():
     return list_json_files()
 
 
+@app.get("/env")
+def env_data():
+    """Returns AllSky runtime AS_ variables (star count, exposure, planets, weather, etc.)."""
+    return get_allsky_env()
+
+
 @app.get("/all")
 def all_data():
     result = {}
@@ -101,6 +132,9 @@ def all_data():
             result[path.stem] = read_json_file(path)
         except (json.JSONDecodeError, OSError):
             result[path.stem] = {"error": "failed to read"}
+
+    # Include the environment variables inside the "all" payload as well
+    result["env"] = get_allsky_env()
     return result
 
 
